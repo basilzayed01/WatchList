@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>⭐ Latest Reviews</h2>
+
+{% if reviews %}
+    <table>
+        <thead>
+            <tr>
+                <th>Movie</th>
+                <th>User</th>
+                <th>Rating</th>
+                <th>Review</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for review in reviews %}
+            <tr>
+                <td><strong>{{ review.title }}</strong></td>
+                <td>{{ review.username }}</td>
+                <td>{{ review.rating }}/10</td>
+                <td>{{ review.review_text }}</td>
+                <td>{{ review.review_date.strftime('%Y-%m-%d') if review.review_date else 'N/A' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p>No reviews yet. Be the first to write a review!</p>
+{% endif %}
+
+{% if session.user_id %}
+    <div style="margin-top: 30px;">
+        <h3>Write a Review</h3>
+        <form method="POST" action="{{ url_for('add_review') }}">
+            <div class="form-group">
+                <label>Select Movie</label>
+                <select name="movie_id" required>
+                    <option value="">Choose a movie...</option>
+                    {% for movie in all_movies %}
+                    <option value="{{ movie.movie_id }}">{{ movie.title }} ({{ movie.release_year }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Rating (1-10)</label>
+                <input type="number" name="rating" min="1" max="10" required>
+            </div>
+            <div class="form-group">
+                <label>Your Review</label>
+                <textarea name="review_text" rows="4" required></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Submit Review</button>
+        </form>
+    </div>
+{% else %}
+    <p><a href="{{ url_for('login') }}">Login</a> to write a review.</p>
+{% endif %}
+{% endblock %}

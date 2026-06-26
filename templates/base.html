@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WatchList - Track Your Movies</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav>
+        <h1><a href="{{ url_for('index') }}">🎬 WatchList</a></h1>
+        <ul>
+            <li><a href="{{ url_for('movies') }}">Movies</a></li>
+            {% if session.user_id %}
+                <li><a href="{{ url_for('watchlist') }}">My Watchlist</a></li>
+                <li><a href="{{ url_for('reviews') }}">Reviews</a></li>
+                <li><a href="{{ url_for('add_movie') }}">+ Add Movie</a></li>
+            {% endif %}
+        </ul>
+        <div class="user-info">
+            {% if session.user_id %}
+                <span>Welcome, {{ session.username }}!</span>
+                <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
+            {% else %}
+                <a href="{{ url_for('login') }}" class="btn btn-primary">Login</a>
+                <a href="{{ url_for('register') }}" class="btn btn-success">Register</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Page Content -->
+        {% block content %}{% endblock %}
+    </div>
+
+    <footer>
+        <p>&copy; 2026 WatchList. All rights reserved.</p>
+    </footer>
+</body>
+</html>

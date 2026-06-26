@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="hero">
+    <h2>Track Your Movie Journey</h2>
+    <p>Keep track of movies you've watched, want to watch, and your favorites all in one place.</p>
+    {% if not session.user_id %}
+        <a href="{{ url_for('register') }}" class="btn btn-primary" style="margin-top: 20px;">Get Started</a>
+    {% else %}
+        <a href="{{ url_for('movies') }}" class="btn btn-primary" style="margin-top: 20px;">Browse Movies</a>
+    {% endif %}
+</div>
+
+<div class="features">
+    <h3 style="text-align: center; margin-bottom: 30px;">Features</h3>
+    <div class="movie-grid">
+        <div class="movie-card" style="text-align: center;">
+            <h3>📚 Track Movies</h3>
+            <p>Add movies to your personal watchlist with status: Watched, Want to Watch, or Favorite.</p>
+        </div>
+        <div class="movie-card" style="text-align: center;">
+            <h3>⭐ Write Reviews</h3>
+            <p>Rate movies from 1-10 and share your thoughts with other users.</p>
+        </div>
+        <div class="movie-card" style="text-align: center;">
+            <h3>🎬 Discover</h3>
+            <p>Browse through our collection of movies and find your next favorite film.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>📋 My Watchlist</h2>
+
+{% if watchlist %}
+    <table>
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Year</th>
+                <th>Genre</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in watchlist %}
+            <tr>
+                <td>{{ item.title }}</td>
+                <td>{{ item.release_year }}</td>
+                <td>{{ item.genre }}</td>
+                <td>
+                    <span class="status-badge status-{{ item.status|replace(' ', '-') }}">
+                        {{ item.status }}
+                    </span>
+                </td>
+                <td>
+                    <form action="{{ url_for('update_watchlist_status', watchlist_id=item.watchlist_id) }}" method="POST" style="display: inline;">
+                        <select name="status">
+                            <option value="Want to Watch" {% if item.status == 'Want to Watch' %}selected{% endif %}>Want to Watch</option>
+                            <option value="Watched" {% if item.status == 'Watched' %}selected{% endif %}>Watched</option>
+                            <option value="Favorite" {% if item.status == 'Favorite' %}selected{% endif %}>Favorite</option>
+                        </select>
+                        <button type="submit" class="btn btn-info">Update</button>
+                    </form>
+                    <a href="{{ url_for('remove_from_watchlist', watchlist_id=item.watchlist_id) }}" class="btn btn-danger" onclick="return confirm('Remove from watchlist?')">Remove</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p>Your watchlist is empty. <a href="{{ url_for('movies') }}">Browse movies</a> to add some!</p>
+{% endif %}
+{% endblock %}

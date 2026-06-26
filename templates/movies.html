@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>🎬 All Movies</h2>
+
+{% if session.user_id %}
+    <a href="{{ url_for('add_movie') }}" class="btn btn-success" style="margin-bottom: 20px;">+ Add New Movie</a>
+{% endif %}
+
+<div class="movie-grid">
+    {% for movie in movies %}
+    <div class="movie-card">
+        <h3>{{ movie.title }}</h3>
+        <p class="year">{{ movie.release_year }}</p>
+        <span class="genre">{{ movie.genre }}</span>
+        <p class="director"><strong>Director:</strong> {{ movie.director }}</p>
+        <p class="description">{{ movie.description[:100] }}{% if movie.description|length > 100 %}...{% endif %}</p>
+        
+        <div class="actions">
+            {% if session.user_id %}
+                <form action="{{ url_for('add_to_watchlist', movie_id=movie.movie_id) }}" method="POST" style="display: inline;">
+                    <select name="status" class="status-select">
+                        <option value="Want to Watch">Want to Watch</option>
+                        <option value="Watched">Watched</option>
+                        <option value="Favorite">Favorite</option>
+                    </select>
+                    <button type="submit" class="btn btn-primary">+ Add</button>
+                </form>
+                <a href="{{ url_for('edit_movie', movie_id=movie.movie_id) }}" class="btn btn-warning">Edit</a>
+                <a href="{{ url_for('delete_movie', movie_id=movie.movie_id) }}" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this movie?')">Delete</a>
+            {% else %}
+                <a href="{{ url_for('login') }}" class="btn btn-primary">Login to Add</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
