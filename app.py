@@ -1,25 +1,28 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
-import mysql.connector
-from mysql.connector import Error
+import os
+import psycopg2
+from psycopg2 import Error, sql
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
+from dotenv import load_dotenv
+
+# Load environment variables from .env file (optional for local)
+load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = 'your-secret-key-change-this-in-production'
+app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-change-this-in-production')
 
-db_config = {
-    'host': 'localhost',
-    'user': 'root',
-    'database': 'watchlist_db',
-    'password': 'basilzayed'
-}
+# Database configuration - uses environment variable on Render, falls back to SQLite locally
+DATABASE_URL = os.environ.get('DATABASE_URL', 'sqlite:///watchlist.db')
 
 def get_db_connection():
+    """Create a connection to the PostgreSQL database"""
     try:
-        conn = mysql.connector.connect(**db_config)
+        # Parse the DATABASE_URL for Render's PostgreSQL
+        conn = psycopg2.connect(DATABASE_URL)
         return conn
     except Error as e:
-        print(f"Error connecting to MySQL: {e}")
+        print(f"Error connecting to PostgreSQL: {e}")
         return None
 
 def login_required(f):
@@ -43,15 +46,15 @@ def login():
         
         conn = get_db_connection()
         if conn:
-            cursor = conn.cursor(dictionary=True)
-            cursor.execute("SELECT * FROM User WHERE username = %s", (username,))
+            cursor = conn.cursor()
+            cursor.execute("SELECT user_id, username, password_hash FROM \"User\" WHERE username = %s", (username,))
             user = cursor.fetchone()
             cursor.close()
             conn.close()
             
-            if user and check_password_hash(user['password_hash'], password):
-                session['user_id'] = user['user_id']
-                session['username'] = user['username']
+            if user and check_password_hash(user[2], password):
+                session['user_id'] = user[0]
+                session['username'] = user[1]
                 flash('Login successful!', 'success')
                 return redirect(url_for('index'))
             else:
@@ -72,7 +75,7 @@ def register():
             cursor = conn.cursor()
             try:
                 cursor.execute(
-                    "INSERT INTO User (username, email, password_hash) VALUES (%s, %s, %s)",
+                    "INSERT INTO \"User\" (username, email, password_hash) VALUES (%s, %s, %s)",
                     (username, email, password_hash)
                 )
                 conn.commit()
@@ -97,8 +100,8 @@ def movies():
     conn = get_db_connection()
     movies_list = []
     if conn:
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM Movie ORDER BY release_year DESC")
+        cursor = conn.cursor()
+        cursor.execute("SELECT movie_id, title, release_year, genre, director, description FROM \"Movie\" ORDER BY release_year DESC")
         movies_list = cursor.fetchall()
         cursor.close()
         conn.close()
@@ -118,7 +121,7 @@ def add_movie():
         if conn:
             cursor = conn.cursor()
             cursor.execute(
-                "INSERT INTO Movie (title, release_year, genre, director, description) VALUES (%s, %s, %s, %s, %s)",
+                "INSERT INTO \"Movie\" (title, release_year, genre, director, description) VALUES (%s, %s, %s, %s, %s)",
                 (title, release_year, genre, director, description)
             )
             conn.commit()
@@ -143,7 +146,7 @@ def edit_movie(movie_id):
         if conn:
             cursor = conn.cursor()
             cursor.execute(
-                "UPDATE Movie SET title=%s, release_year=%s, genre=%s, director=%s, description=%s WHERE movie_id=%s",
+                "UPDATE \"Movie\" SET title=%s, release_year=%s, genre=%s, director=%s, description=%s WHERE movie_id=%s",
                 (title, release_year, genre, director, description, movie_id)
             )
             conn.commit()
@@ -154,8 +157,8 @@ def edit_movie(movie_id):
     
     movie = None
     if conn:
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM Movie WHERE movie_id = %s", (movie_id,))
+        cursor = conn.cursor()
+        cursor.execute("SELECT movie_id, title, release_year, genre, director, description FROM \"Movie\" WHERE movie_id = %s", (movie_id,))
         movie = cursor.fetchone()
         cursor.close()
         conn.close()
@@ -168,7 +171,7 @@ def delete_movie(movie_id):
     conn = get_db_connection()
     if conn:
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM Movie WHERE movie_id = %s", (movie_id,))
+        cursor.execute("DELETE FROM \"Movie\" WHERE movie_id = %s", (movie_id,))
         conn.commit()
         cursor.close()
         conn.close()
@@ -181,11 +184,11 @@ def watchlist():
     conn = get_db_connection()
     watchlist_items = []
     if conn:
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
         cursor.execute("""
             SELECT w.watchlist_id, w.status, m.movie_id, m.title, m.release_year, m.genre
-            FROM Watchlist w
-            JOIN Movie m ON w.movie_id = m.movie_id
+            FROM \"Watchlist\" w
+            JOIN \"Movie\" m ON w.movie_id = m.movie_id
             WHERE w.user_id = %s
             ORDER BY 
                 CASE w.status 
@@ -208,7 +211,7 @@ def add_to_watchlist(movie_id):
         cursor = conn.cursor()
         try:
             cursor.execute(
-                "INSERT INTO Watchlist (user_id, movie_id, status) VALUES (%s, %s, %s)",
+                "INSERT INTO \"Watchlist\" (user_id, movie_id, status) VALUES (%s, %s, %s)",
                 (session['user_id'], movie_id, status)
             )
             conn.commit()
@@ -228,7 +231,7 @@ def update_watchlist_status(watchlist_id):
     if conn:
         cursor = conn.cursor()
         cursor.execute(
-            "UPDATE Watchlist SET status = %s WHERE watchlist_id = %s AND user_id = %s",
+            "UPDATE \"Watchlist\" SET status = %s WHERE watchlist_id = %s AND user_id = %s",
             (new_status, watchlist_id, session['user_id'])
         )
         conn.commit()
@@ -244,7 +247,7 @@ def remove_from_watchlist(watchlist_id):
     if conn:
         cursor = conn.cursor()
         cursor.execute(
-            "DELETE FROM Watchlist WHERE watchlist_id = %s AND user_id = %s",
+            "DELETE FROM \"Watchlist\" WHERE watchlist_id = %s AND user_id = %s",
             (watchlist_id, session['user_id'])
         )
         conn.commit()
@@ -259,18 +262,18 @@ def reviews():
     reviews_list = []
     all_movies = []
     if conn:
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor()
         cursor.execute("""
             SELECT r.review_id, r.rating, r.review_text, r.review_date,
                    u.username, m.title, m.movie_id
-            FROM Review r
-            JOIN User u ON r.user_id = u.user_id
-            JOIN Movie m ON r.movie_id = m.movie_id
+            FROM \"Review\" r
+            JOIN \"User\" u ON r.user_id = u.user_id
+            JOIN \"Movie\" m ON r.movie_id = m.movie_id
             ORDER BY r.review_date DESC
         """)
         reviews_list = cursor.fetchall()
         
-        cursor.execute("SELECT movie_id, title, release_year FROM Movie ORDER BY title")
+        cursor.execute("SELECT movie_id, title, release_year FROM \"Movie\" ORDER BY title")
         all_movies = cursor.fetchall()
         cursor.close()
         conn.close()
@@ -287,7 +290,7 @@ def add_review():
     if conn:
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO Review (user_id, movie_id, rating, review_text) VALUES (%s, %s, %s, %s)",
+            "INSERT INTO \"Review\" (user_id, movie_id, rating, review_text) VALUES (%s, %s, %s, %s)",
             (session['user_id'], movie_id, rating, review_text)
         )
         conn.commit()
@@ -297,4 +300,5 @@ def add_review():
     return redirect(url_for('reviews'))
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
